@@ -18,6 +18,7 @@ namespace ItemManagerParser
             var dc_bitmap = Bitmap.FromFile(@"..\..\..\..\EverybodyEdits\images\1531_items.ItemManager_decorationsBM.png");
             var sp_bitmap = Bitmap.FromFile(@"..\..\..\..\EverybodyEdits\images\1532_items.ItemManager_specialBricksBM.png");
             var ef_bitmap = Bitmap.FromFile(@"..\..\..\..\EverybodyEdits\images\1550_items.ItemManager_effectBricksBM.png");
+            var dr_bitmap = Bitmap.FromFile(@"..\..\..\..\\EverybodyEdits\images\1575_items.ItemManager_doorsBM.png");
 
             var main = new Bitmap(16 * 2048, 16);
             var g = Graphics.FromImage(main);
@@ -34,7 +35,8 @@ namespace ItemManagerParser
                                (args.Any(x => x == "backgroundBricksBMD")) ? 1 :
                                (args.Any(x => x == "decorationsBMD")) ? 2 :
                                (args.Any(x => x == "specialBricksBMD")) ? 3 :
-                               (args.Any(x => x == "effectBricksBMD")) ? 4
+                               (args.Any(x => x == "effectBricksBMD")) ? 4 :
+                               (args.Any(x => x == "doorsBMD")) ? 5
                                : - 1;
 
                     if (type == -1)
@@ -73,6 +75,9 @@ namespace ItemManagerParser
                                 break;
                             case 4:
                                 g.DrawImageUnscaled(CropImage((Bitmap)ef_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
+                                break;
+                            case 5:
+                                g.DrawImageUnscaled(CropImage((Bitmap)dr_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
                                 break;
                         }
                     }
