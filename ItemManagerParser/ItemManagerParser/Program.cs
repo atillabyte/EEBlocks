@@ -10,6 +10,30 @@ namespace ItemManagerParser
 {
     class Program
     {
+        class Brick
+        {
+            public int Id { get; set; }
+            public int Offset { get; set; }
+            public int Type { get; set; }
+            public int Count { get; set; }
+        }
+        class Morph
+        {
+            public string Type { get; set; }
+            public int Offset { get; set; }
+            public int Count { get; set; }
+        }
+
+        public enum Type
+        {
+            forgroundBricksBMD = 0,
+            backgroundBricksBMD = 1,
+            decorationsBMD = 2,
+            specialBricksBMD = 3,
+            effectBricksBMD = 4,
+            doorsBMD = 5
+        };
+
         static void Main(string[] undefned)
         {
             var file = File.ReadAllLines(@"..\..\..\..\EverybodyEdits\scripts\ItemManager.as");
@@ -20,10 +44,25 @@ namespace ItemManagerParser
             var ef_bitmap = Bitmap.FromFile(@"..\..\..\..\EverybodyEdits\images\1550_items.ItemManager_effectBricksBM.png");
             var dr_bitmap = Bitmap.FromFile(@"..\..\..\..\\EverybodyEdits\images\1575_items.ItemManager_doorsBM.png");
 
-            var main = new Bitmap(16 * 2048, 16);
-            var g = Graphics.FromImage(main);
+            var bricks = new List<Brick>();
+            var morphs = new List<Morph>();
 
-            var highest_id = -1;
+            foreach (var line in file)
+            {
+                //:BlSprite = new BlSprite(specialBricksBMD,440,0,16,16,4);
+                if (line.Contains(":BlSprite = new BlSprite("))
+                {
+                    var args = line.Split(',');
+                    var type = args[0].Split('(')[1];
+
+                    var offset = args[1];
+                    var count = new string(args[5].Where(x => char.IsDigit(x)).ToArray());
+
+                    if (Enum.GetNames(typeof(Type)).Any(x => x == type))
+                        morphs.Add(new Morph() { Type = type, Offset = int.Parse(offset), Count = int.Parse(count) });
+                }
+            }
+
             foreach (var line in file)
             {
                 if (line.Contains(".addBrick(createBrick("))
@@ -31,64 +70,76 @@ namespace ItemManagerParser
                     var args = line.Split(',');
                     var id = args[0].Split('(')[2];
                     var offset = args[8];
-                    var type = args.Any(x => x == "forgroundBricksBMD") ? 0 :
-                               (args.Any(x => x == "backgroundBricksBMD")) ? 1 :
-                               (args.Any(x => x == "decorationsBMD")) ? 2 :
-                               (args.Any(x => x == "specialBricksBMD")) ? 3 :
-                               (args.Any(x => x == "effectBricksBMD")) ? 4 :
-                               (args.Any(x => x == "doorsBMD")) ? 5
-                               : - 1;
-
-                    if (type == -1)
-                        continue;
 
                     int _id;
-
-                    if (!int.TryParse(id, out _id))
-                        _id = (int)Enum.Parse(typeof(ItemId), id.Replace("ItemId.", ""));
-
-                    offset = Convert.ToString(new System.Data.DataTable().Compute(offset, null));
-
                     int _offset;
-                    if (int.TryParse(offset, out _offset))
-                    {
-                        Console.WriteLine("ID: " + _id);
-                        Console.WriteLine("Type: " + type);
-                        Console.WriteLine("Offset: " + _offset);
 
-                        if (_id > highest_id)
-                            highest_id = _id;
+                    var name = Enum.GetNames(typeof(Type)).ToList().Where(x => args.Contains(x)).FirstOrDefault();
 
-                        switch(type)
+                    if (name == null)
+                        continue;
+                    else {
+                        var type = Enum.Parse(typeof(Type), name);
+
+                        if (type == null || (int)type == -1)
+                            continue;
+
+                        if (!int.TryParse(id, out _id))
+                            _id = (int)Enum.Parse(typeof(ItemId), id.Replace("ItemId.", ""));
+
+                        offset = Convert.ToString(new System.Data.DataTable().Compute(offset, null));
+
+                        if (int.TryParse(offset, out _offset))
                         {
-                            case 0:
-                                g.DrawImageUnscaled(CropImage((Bitmap)fg_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
-                                break;
-                            case 1:
-                                g.DrawImageUnscaled(CropImage((Bitmap)bg_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
-                                break;
-                            case 2:
-                                g.DrawImageUnscaled(CropImage((Bitmap)dc_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
-                                break;
-                            case 3:
-                                g.DrawImageUnscaled(CropImage((Bitmap)sp_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
-                                break;
-                            case 4:
-                                g.DrawImageUnscaled(CropImage((Bitmap)ef_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
-                                break;
-                            case 5:
-                                g.DrawImageUnscaled(CropImage((Bitmap)dr_bitmap, new Rectangle(_offset * 16, 0, 16, 16)), _id * 16, 0, 16, 16);
-                                break;
+                            var count = morphs.Where(x => x.Offset == _offset - 1 && x.Type == name).FirstOrDefault()?.Count;
+
+                            if (count == null)
+                                count = 1;
+
+                            bricks.Add(new Brick() { Id = _id, Type = (int)type, Offset = _offset, Count = (int)count });
                         }
                     }
-
                 }
             }
 
-            CropImage(main, new Rectangle(0, 0, highest_id*16, 16)).Save(@"output.png", System.Drawing.Imaging.ImageFormat.Png);
+            var main = new Bitmap(16 * bricks.OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+            var g = Graphics.FromImage(main);
+
+            foreach (var brick in bricks)
+            {
+                Bitmap bitmap = null;
+
+                switch (brick.Type)
+                {
+                    case 0:
+                        bitmap = (Bitmap)fg_bitmap;
+                        break;
+                    case 1:
+                        bitmap = (Bitmap)bg_bitmap;
+                        break;
+                    case 2:
+                        bitmap = (Bitmap)dc_bitmap;
+                        break;
+                    case 3:
+                        bitmap = (Bitmap)sp_bitmap;
+                        break;
+                    case 4:
+                        bitmap = (Bitmap)ef_bitmap;
+                        break;
+                    case 5:
+                        bitmap = (Bitmap)dc_bitmap;
+                        break;
+                }
+
+                for (int y = 0; y < brick.Count; y++)
+                    g.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + 16 * y - 16, 0, 16, 16)), brick.Id * 16, y * 16, 16, 16);
+            }
+
+            main.Save(@"ItemManagerParser_output.png", System.Drawing.Imaging.ImageFormat.Png);
             Console.WriteLine("Done.");
             Console.ReadLine();
         }
+
         public static Bitmap CropImage(Bitmap source, Rectangle section)
         {
             Bitmap bmp = new Bitmap(section.Width, section.Height);
