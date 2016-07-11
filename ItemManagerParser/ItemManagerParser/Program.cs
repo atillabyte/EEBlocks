@@ -102,8 +102,18 @@ namespace ItemManagerParser
                 }
             }
 
-            var main = new Bitmap(16 * bricks.OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
-            var g = Graphics.FromImage(main);
+            var all_blocks = new Bitmap(16 * bricks.OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+            var foreground = new Bitmap(16 * bricks.Where(d => d.Type == (int)Type.forgroundBricksBMD)
+                .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+            var background = new Bitmap(16 * bricks.Where(d => d.Type == (int)Type.backgroundBricksBMD)
+                .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+            var other = new Bitmap(16 * bricks.Where(d => d.Type != (int)Type.forgroundBricksBMD && d.Type != (int)Type.backgroundBricksBMD)
+                .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+
+            var ag = Graphics.FromImage(all_blocks);
+            var fg = Graphics.FromImage(foreground);
+            var bg = Graphics.FromImage(background);
+            var og = Graphics.FromImage(other);
 
             foreach (var brick in bricks)
             {
@@ -132,10 +142,24 @@ namespace ItemManagerParser
                 }
 
                 for (int y = 0; y < brick.Count; y++)
-                    g.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + 16 * y - 16, 0, 16, 16)), brick.Id * 16, y * 16, 16, 16);
+                {
+                    ag.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+
+                    if (brick.Type == (int)Type.forgroundBricksBMD)
+                        fg.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+
+                    else if (brick.Type == (int)Type.backgroundBricksBMD)
+                        bg.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+
+                    else if (brick.Type != (int)Type.forgroundBricksBMD && brick.Type != (int)Type.backgroundBricksBMD)
+                        og.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+                }
             }
 
-            CropImage(main, new Rectangle(16, 0, main.Width-16, main.Height)).Save(@"ItemManagerParser_output.png", System.Drawing.Imaging.ImageFormat.Png);
+            CropImage(all_blocks, new Rectangle(16, 0, all_blocks.Width - 16, all_blocks.Height)).Save(@"ItemManagerParser_output.png", System.Drawing.Imaging.ImageFormat.Png);
+            CropImage(foreground, new Rectangle(16, 0, foreground.Width - 16, foreground.Height)).Save(@"ItemManagerParser_output_fg.png", System.Drawing.Imaging.ImageFormat.Png);
+            CropImage(background, new Rectangle(16, 0, background.Width - 16, background.Height)).Save(@"ItemManagerParser_output_bg.png", System.Drawing.Imaging.ImageFormat.Png);
+            CropImage(other, new Rectangle(16, 0, other.Width - 16, other.Height)).Save(@"ItemManagerParser_output_og.png", System.Drawing.Imaging.ImageFormat.Png);
             Console.WriteLine("Done.");
             Console.ReadLine();
         }
