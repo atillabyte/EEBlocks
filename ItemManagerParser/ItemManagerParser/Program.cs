@@ -135,7 +135,7 @@ namespace ItemManagerParser
                     g.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + 16 * y - 16, 0, 16, 16)), brick.Id * 16, y * 16, 16, 16);
             }
 
-            main.Save(@"ItemManagerParser_output.png", System.Drawing.Imaging.ImageFormat.Png);
+            CropImage(main, new Rectangle(16, 0, main.Width-16, main.Height)).Save(@"ItemManagerParser_output.png", System.Drawing.Imaging.ImageFormat.Png);
             Console.WriteLine("Done.");
             Console.ReadLine();
         }
