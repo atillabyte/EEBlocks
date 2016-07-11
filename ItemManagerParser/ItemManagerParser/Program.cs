@@ -104,9 +104,9 @@ namespace ItemManagerParser
 
             var all_blocks = new Bitmap(16 * bricks.OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
             var foreground = new Bitmap(16 * bricks.Where(d => d.Type == (int)Type.forgroundBricksBMD)
-                .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+                .OrderByDescending(x => x.Id).First().Id, 16);
             var background = new Bitmap(16 * bricks.Where(d => d.Type == (int)Type.backgroundBricksBMD)
-                .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
+                .OrderByDescending(x => x.Id).First().Id, 16);
             var other = new Bitmap(16 * bricks.Where(d => d.Type != (int)Type.forgroundBricksBMD && d.Type != (int)Type.backgroundBricksBMD)
                 .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
 
