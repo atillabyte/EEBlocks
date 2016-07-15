@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
+using Newtonsoft.Json;
 
 namespace ItemManagerParser
 {
@@ -49,7 +50,6 @@ namespace ItemManagerParser
 
             foreach (var line in file)
             {
-                //:BlSprite = new BlSprite(specialBricksBMD,440,0,16,16,4);
                 if (line.Contains(":BlSprite = new BlSprite("))
                 {
                     var args = line.Split(',');
@@ -60,6 +60,7 @@ namespace ItemManagerParser
 
                     if (Enum.GetNames(typeof(Type)).Any(x => x == type))
                         morphs.Add(new Morph() { Type = type, Offset = int.Parse(offset), Count = int.Parse(count) });
+
                 }
             }
 
@@ -91,7 +92,7 @@ namespace ItemManagerParser
 
                         if (int.TryParse(offset, out _offset))
                         {
-                            var count = morphs.Where(x => x.Offset == _offset - 1 && x.Type == name).FirstOrDefault()?.Count;
+                            var count = morphs.Where(x => x.Offset == _offset && x.Type == name).FirstOrDefault()?.Count;
 
                             if (count == null)
                                 count = 1;
@@ -107,43 +108,61 @@ namespace ItemManagerParser
                 .OrderByDescending(x => x.Id).First().Id, 16);
             var background = new Bitmap(16 * bricks.Where(d => d.Type == (int)Type.backgroundBricksBMD)
                 .OrderByDescending(x => x.Id).First().Id, 16);
-            var other = new Bitmap(16 * bricks.Where(d => d.Type != (int)Type.forgroundBricksBMD && d.Type != (int)Type.backgroundBricksBMD)
+            var special = new Bitmap(16 * bricks.Where(d => d.Type != (int)Type.forgroundBricksBMD && d.Type != (int)Type.backgroundBricksBMD)
                 .OrderByDescending(x => x.Id).First().Id, 16 * bricks.OrderByDescending(x => x.Count).First().Count);
 
             var ag = Graphics.FromImage(all_blocks);
             var fg = Graphics.FromImage(foreground);
             var bg = Graphics.FromImage(background);
-            var og = Graphics.FromImage(other);
+            var og = Graphics.FromImage(special);
 
-            foreach (var brick in bricks)
+            Directory.CreateDirectory("Blocks");
+
+            for(int i = 0; i < bricks.Count(); i++)
             {
+                var brick = bricks[i];
                 Bitmap bitmap = null;
 
                 switch (brick.Type)
                 {
-                    case 0:
-                        bitmap = (Bitmap)fg_bitmap;
+                    case 0: bitmap = (Bitmap)fg_bitmap;
                         break;
-                    case 1:
-                        bitmap = (Bitmap)bg_bitmap;
+                    case 1: bitmap = (Bitmap)bg_bitmap;
                         break;
-                    case 2:
-                        bitmap = (Bitmap)dc_bitmap;
+                    case 2: bitmap = (Bitmap)dc_bitmap;
                         break;
-                    case 3:
-                        bitmap = (Bitmap)sp_bitmap;
+                    case 3: bitmap = (Bitmap)sp_bitmap;
                         break;
-                    case 4:
-                        bitmap = (Bitmap)ef_bitmap;
+                    case 4: bitmap = (Bitmap)ef_bitmap;
                         break;
-                    case 5:
-                        bitmap = (Bitmap)dc_bitmap;
+                    case 5: bitmap = (Bitmap)dc_bitmap;
                         break;
                 }
 
                 for (int y = 0; y < brick.Count; y++)
                 {
-                    ag.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+                    var offset = (brick.Type != (int)Type.forgroundBricksBMD && brick.Type != (int)Type.backgroundBricksBMD) ? brick.Id.CorrectOffset() : 16;
+
+                    ag.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - offset), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+
+                    if (brick.Type == (int)Type.forgroundBricksBMD || brick.Type == (int)Type.backgroundBricksBMD) {
+                        if (brick.Id - 1 < 0) continue;
+
+                        CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)).
+                            Save("Blocks" + Path.DirectorySeparatorChar + $"b{brick.Id - 1}{ (brick.Count > 1 ? "_" + y : "") }.png", System.Drawing.Imaging.ImageFormat.Png);
+
+                        if (y == 0)
+                            CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)).
+                                Save("Blocks" + Path.DirectorySeparatorChar + $"b{brick.Id - 1}.png", System.Drawing.Imaging.ImageFormat.Png);
+                    }
+                    else {
+                        CropImage(bitmap, new Rectangle((brick.Offset * 16) + 16 * y - brick.Id.CorrectOffset(), 0, 16, 16)).
+                            Save("Blocks" + Path.DirectorySeparatorChar + $"b{brick.Id}{ (brick.Count > 1 ? "_" + y : "") }.png", System.Drawing.Imaging.ImageFormat.Png);
+
+                        if (y == 0)
+                        CropImage(bitmap, new Rectangle((brick.Offset * 16) + 16 * y - brick.Id.CorrectOffset(), 0, 16, 16)).
+                            Save("Blocks" + Path.DirectorySeparatorChar + $"b{brick.Id}.png", System.Drawing.Imaging.ImageFormat.Png);
+                    }
 
                     if (brick.Type == (int)Type.forgroundBricksBMD)
                         fg.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
@@ -152,17 +171,23 @@ namespace ItemManagerParser
                         bg.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
 
                     else if (brick.Type != (int)Type.forgroundBricksBMD && brick.Type != (int)Type.backgroundBricksBMD)
-                        og.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - 16), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
+                        og.DrawImageUnscaled(CropImage(bitmap, new Rectangle((brick.Offset * 16) + (16 * y - brick.Id.CorrectOffset()), 0, 16, 16)), (brick.Id * 16), y * 16, 16, 16);
                 }
             }
 
             CropImage(all_blocks, new Rectangle(16, 0, all_blocks.Width - 16, all_blocks.Height)).Save(@"ItemManagerParser_output.png", System.Drawing.Imaging.ImageFormat.Png);
             CropImage(foreground, new Rectangle(16, 0, foreground.Width - 16, foreground.Height)).Save(@"ItemManagerParser_output_fg.png", System.Drawing.Imaging.ImageFormat.Png);
             CropImage(background, new Rectangle(16, 0, background.Width - 16, background.Height)).Save(@"ItemManagerParser_output_bg.png", System.Drawing.Imaging.ImageFormat.Png);
-            CropImage(other, new Rectangle(16, 0, other.Width - 16, other.Height)).Save(@"ItemManagerParser_output_og.png", System.Drawing.Imaging.ImageFormat.Png);
+            CropImage(special, new Rectangle(16, 0, special.Width - 16, special.Height)).Save(@"ItemManagerParser_output_og.png", System.Drawing.Imaging.ImageFormat.Png);
+
+            var specialBricks = bricks.Where(x => x.Count > 1).Select(x => new int[2] { x.Id, x.Count });
+            File.WriteAllText(@"SpecialBricks.json", JsonConvert.SerializeObject(specialBricks));
+
             Console.WriteLine("Done.");
             Console.ReadLine();
         }
+
+
 
         public static Bitmap CropImage(Bitmap source, Rectangle section)
         {
@@ -174,6 +199,21 @@ namespace ItemManagerParser
         }
     }
 
+    static class Helper
+    {
+        public static int CorrectOffset(this int id)
+        {
+            switch (id)
+            {
+                case 385:
+                    return 0;
+                case 1064:
+                    return 0;
+                default:
+                    return 0;
+            }
+        }
+    }
     public enum ItemId
     {
         SWITCH_PURPLE = 113,
